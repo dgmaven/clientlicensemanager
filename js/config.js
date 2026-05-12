@@ -1,14 +1,17 @@
 
-// GS URL = https://docs.google.com/spreadsheets/d/1gVQiKCfuskMzxIyi6E7pfXaP9uM_2prhhe-kxXXgcLk/
+// GS URL = https://docs.google.com/spreadsheets/d/1YKIZ8aNW8gAVsOfI7buAUNhS4z1zD2r6ENa8C0Li_A8/
 
 
 // js/config.js
 const CONFIG = {
   // Dynamic settings from localStorage
   get WEB_URL() {
-    return localStorage.getItem('SYSTEM_WEB_URL') || "";
+    return localStorage.getItem('SYSTEM_WEB_URL') || this.DEFAULT_WEB_URL || "";
   },
   set WEB_URL(v) { localStorage.setItem('SYSTEM_WEB_URL', v); },
+
+  // Pre-configured URL to bypass activation on fresh browsers
+  DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbxJTOJ_BSY45Zv11yiVHyYhhJ3QeHYqavQ8IdK25lX3QWheSZYEsvPJJKvWEFRIvAqx/exec",
 
   MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbyqugQrGMxgYX6f2yw_bYI80nXiqA0H4GQv8ZDDR0h8Q9yjaFGiUCEHy3_4TFyEWxklhQ/exec",
 
