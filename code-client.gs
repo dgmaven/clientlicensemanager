@@ -31,7 +31,7 @@ function handleRequest(e) {
     const domain = payload.domain || "global";
  
     // 1. GLOBAL KILL-SWITCH (Ping Master)
-    const bypassActions = ["activateLicense", "ping", "validateLicense"];
+    const bypassActions = ["activateLicense", "ping", "validateLicense", "updateProfile"];
     if (!bypassActions.includes(action)) {
       // Force domain verification. 
       const currentDomain = (payload.domain || "global").toLowerCase().trim();
@@ -494,11 +494,14 @@ function updateProfile(p) {
   
   if (!id) return { status: "error", message: "Missing User ID" };
 
+  const newEmail = p.email || p.newEmail;
+  const newPassword = p.password || p.newPassword;
+
   for (let i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       if (p.name) sheet.getRange(i + 1, 2).setValue(p.name);
-      if (p.email) sheet.getRange(i + 1, 3).setValue(p.email);
-      if (p.password) sheet.getRange(i + 1, 4).setValue(hashPassword(p.password));
+      if (newEmail) sheet.getRange(i + 1, 3).setValue(newEmail);
+      if (newPassword) sheet.getRange(i + 1, 4).setValue(hashPassword(newPassword));
       return { status: "success" };
     }
   }
