@@ -57,6 +57,7 @@ function handleRequest(e) {
       case "activateLicense": response = activateLicense(payload); break;
       case "updateLicense": response = updateLicense(payload); break;
       case "updateClient": response = updateClient(payload); break;
+      case "updateProfile": response = updateProfile(payload); break;
       case "resetSystem": response = resetSystem(payload); break;
       default: response = { status: "error", message: "Invalid Action" };
     }
@@ -484,6 +485,24 @@ function listClients() {
   const d = SPREADSHEET.getSheetByName(SHEETS.CLIENTS).getDataRange().getValues();
   const h = d.shift();
   return { status: "success", data: d.map(r => { let o = {}; h.forEach((k, i) => o[k.toLowerCase().replace(/\s/g, '')] = r[i]); return o; }).reverse() };
+}
+
+function updateProfile(p) {
+  const sheet = SPREADSHEET.getSheetByName(SHEETS.MEMBERS);
+  const data = sheet.getDataRange().getValues();
+  const id = p.id;
+  
+  if (!id) return { status: "error", message: "Missing User ID" };
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      if (p.name) sheet.getRange(i + 1, 2).setValue(p.name);
+      if (p.email) sheet.getRange(i + 1, 3).setValue(p.email);
+      if (p.password) sheet.getRange(i + 1, 4).setValue(hashPassword(p.password));
+      return { status: "success" };
+    }
+  }
+  return { status: "error", message: "Member not found" };
 }
 
 function login(p) {

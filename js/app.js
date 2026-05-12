@@ -50,7 +50,7 @@ const app = createApp({
     });
 
     // Forms
-    const profileForm = ref({ newEmail: '', newPassword: '' });
+    const profileForm = ref({ id: '', name: '', email: '', password: '' });
     const addClientForm = ref({ name: '', phone: '', email: '', source: '' });
     const genLicenseForm = ref({ val: 1, unit: 'years', maxGen: 3 });
     const quickCreateForm = ref({ client: null, val: 1, unit: 'years', maxGen: 3 });
@@ -217,12 +217,21 @@ const app = createApp({
     const handleLogout = () => Auth.logout();
 
     // Profile Management
-    const openProfileModal = () => { modals.value.profile = true; };
+    const openProfileModal = () => { 
+        const u = Auth.getUser();
+        profileForm.value = { id: u.id, name: u.name, email: u.email, password: '' };
+        modals.value.profile = true; 
+    };
     const saveProfile = async () => {
         loading.value.general = true;
         const res = await Utils.callApi("updateProfile", profileForm.value);
         loading.value.general = false;
-        if (res.status === 'success') handleLogout();
+        if (res.status === 'success') {
+            alert("Profile updated successfully! Logging out to apply changes...");
+            handleLogout();
+        } else {
+            alert("Error: " + (res.message || "Failed to update profile"));
+        }
     };
 
     // Client Management
