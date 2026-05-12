@@ -13,7 +13,7 @@ const SHEETS = {
 };
 
 // --- LINK TO MASTER HUB ---
-const MASTER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIQ-TclQ0Wo_WL5HyKi1W9nkfcKpPyR90wgZKj2NgJx7Be9_wZ5UGpVnYtIPLwsUlP/exec";
+const MASTER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbIQ-TclQ0Wo_WL5HyKi1W9nkfcKpPyR90wgZKj2NgJx7Be9_wZ5UGpVnYtIPLwsUlP/exec";
 
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
@@ -29,7 +29,7 @@ function handleRequest(e) {
     const action = params.action;
     const payload = params.payload || params;
     const domain = payload.domain || "global";
-
+ 
     // 1. GLOBAL KILL-SWITCH (Ping Master)
     const bypassActions = ["activateLicense", "ping", "validateLicense"];
     if (!bypassActions.includes(action)) {

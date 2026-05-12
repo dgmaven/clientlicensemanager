@@ -131,6 +131,12 @@ const Utils = {
    * @returns {Promise<object>} JSON response
    */
   async callApi(action, payload = {}, customUrl = null) {
+    // 1. Prioritize LocalStorage if user saved a dynamic URL in Dashboard
+    const savedUrl = localStorage.getItem('SYSTEM_WEB_URL');
+    if (savedUrl && savedUrl.startsWith('http')) {
+        CONFIG.WEB_URL = savedUrl;
+    }
+
     const targetUrl = (customUrl || CONFIG.WEB_URL || "").trim();
     
     if (!targetUrl || !targetUrl.startsWith("http")) {
