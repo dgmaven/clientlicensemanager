@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>License Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    :root {
+      --primary: #ffffff;
+      --primary-hover: #e4e4e7;
+      --bg-dark: #09090b;
+      --surface: #18181b;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --success: #10b981;
+      --danger: #ef4444;
+      --border: #27272a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .generator-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    .header { text-align: center; margin-bottom: 32px; }
+    .header h1 { font-size: 2.2rem; font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: -0.5px; }
+    .header p { color: var(--text-muted); font-size: 0.95rem; }
+
+    .form-group { margin-bottom: 20px; }
+    .form-label { display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.9rem; color: var(--text-muted); }
+    
+    .form-control {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .form-control:focus {
+      border-color: var(--text-muted);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--bg-dark);
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .result-box { margin-top: 30px; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .license-key-display {
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      padding: 24px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .license-key-display h2 { font-family: monospace; letter-spacing: 2px; font-size: 1.4rem; color: var(--primary); }
+
+    .alert { padding: 14px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; }
+    .alert-error { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .alert-success { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .alert-warning { background: rgba(255, 255, 255, 0.05); border-color: var(--border); color: var(--text); }
+    
+    .loader { width: 48px; height: 48px; border: 5px solid var(--primary); border-bottom-color: transparent; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; }
+    @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; }
+    
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid rgba(0,0,0,0.2);
+      border-radius: 50%;
+      border-top-color: var(--bg-dark);
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .admin-link { position: absolute; bottom: -40px; left: 50%; transform: translateX(-50%); color: var(--text-muted); font-size: 0.85rem; text-decoration: none; transition: color 0.2s; }
+    .admin-link:hover { color: var(--primary); }
+
+    .countdown { font-family: monospace; font-size: 1.2rem; font-weight: 500; color: var(--text); text-align: center; margin-bottom: 20px; letter-spacing: 1px;}
+    .otp-input { letter-spacing: 4px; font-size: 1.4rem; text-align: center; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div id="app" class="generator-card" v-cloak>
+    <!-- Full Screen Access Loader -->
+    <div v-if="checkingAccess" class="loading-overlay">
+        <span class="loader"></span>
+        <p style="margin-top:20px; font-weight:600; color:var(--text)">Verifying System License...</p>
+        <p style="font-size:12px; color:var(--text-muted)">Please wait while we connect to the Master Hub</p>
+    </div>
+
+    <div class="header">
+      <h1>License Generator</h1>
+      <p>Secure software activation portal</p>
+    </div>
+
+    <!-- System Status / Global Message -->
+    <div v-if="errorMsg" class="alert alert-error">
+      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      {{ errorMsg }}
+    </div>
+
+    <!-- View: Blocked / Registration Disabled -->
+    <div v-else-if="isBlocked" class="result-box" style="text-align: center;">
+      <div class="alert alert-error" style="display: block; padding: 24px;">
+        <svg width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-bottom: 16px; opacity: 0.8;">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div style="font-size: 1.1rem; font-weight: 600; line-height: 1.5;">{{ blockReason }}</div>
+      </div>
+    </div>
+
+    <!-- View: Success Result -->
+    <div v-else-if="generatedLicense" class="result-box">
+      <div class="alert alert-success">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span>License Key Generated!</span>
+      </div>
+      
+      <div class="license-key-display">
+        <h2 style="user-select: all;">{{ generatedLicense }}</h2>
+      </div>
+
+      <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
+        Key sent to <strong>{{ form.email }}</strong>.
+      </p>
+
+      <button class="btn btn-outline" style="border: 1px solid var(--border); color: var(--text); background: transparent; padding: 12px" @click="resetForm">
+        Generate New Key
+      </button>
+    </div>
+
+    <!-- View: OTP Phase -->
+    <form v-else-if="requiresOtp" @submit.prevent="verifyAndGenerate">
+      <div class="alert alert-warning" style="display: block; font-size: 0.85rem;">
+         <span>We sent a 6-digit code to <strong>{{ form.phone }}</strong> via WhatsApp. Code expires in:</span>
+      </div>
+
+      <div class="countdown">{{ formattedTime }}</div>
+
+      <div class="form-group">
+        <label class="form-label">Enter Verification Code</label>
+        <input type="text" class="form-control otp-input" v-model="form.otp" maxlength="6" placeholder="------" required :disabled="loading || timerExpired">
+      </div>
+
+      <button type="submit" class="btn btn-primary" :disabled="loading || timerExpired || form.otp.length < 6">
+        <div v-if="loading" class="spinner"></div>
+        {{ loading ? 'Verifying...' : 'Verify & Generate' }}
+      </button>
+
+      <button type="button" class="btn btn-outline" style="margin-top: 15px; border: none; font-size: 0.85rem; background: transparent; color: var(--text-muted)" @click="resetForm" :disabled="loading">
+        Cancel
+      </button>
+    </form>
+
+    <!-- View: Registration Form -->
+    <form v-else @submit.prevent="requestOtp">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-control" v-model="form.name" required placeholder="John Doe" :disabled="loading">
+      </div>
+      <div class="form-group">
+        <label class="form-label">WhatsApp Number</label>
+        <input type="tel" class="form-control" v-model="form.phone" required placeholder="Ex: 0112345678" :disabled="loading">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" v-model="form.email" required placeholder="you@email.com" :disabled="loading">
+      </div>
+
+      <button type="submit" class="btn btn-primary" :disabled="loading">
+        <div v-if="loading" class="spinner"></div>
+        {{ loading ? 'Sending Code...' : 'Send Verification OTP' }}
+      </button>
+    </form>
+    
+  </div>
+
+  <a href="login.html" class="admin-link">Admin Access</a>
+
+  <style>[v-cloak] { display: none; }</style>
+
+  <script src="js/config.js?v=1.0.3"></script>
+  <script src="js/utils.js?v=1.0.3"></script>
+  
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+      setup() {
+        const form = ref({ name: '', phone: '', email: '', otp: '' });
+        const loading = ref(false);
+        const errorMsg = ref('');
+        const generatedLicense = ref('');
+        const requiresOtp = ref(false);
+        const timeLeft = ref(300);
+        const timerExpired = ref(false);
+        const isBlocked = ref(false);
+        const checkingAccess = ref(true);
+        const blockReason = ref('');
+        const metadata = ref(null);
+        let timerInterval = null;
+
+        const formattedTime = computed(() => {
+            const m = Math.floor(timeLeft.value / 60);
+            const s = timeLeft.value % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        });
+
+        const checkSystemAccess = async () => {
+            try {
+                if (!CONFIG.WEB_URL) {
+                    const discovered = await Utils.autoDiscoverSatellite();
+                    if (!discovered) {
+                        window.location.href = "activation.html";
+                        return;
+                    }
+                    window.location.reload();
+                    return;
+                }
+                // 1. Get Location Metadata
+                metadata.value = await Utils.getBrowserMetadata();
+                
+                // 2. Fetch Global Settings
+                const res = await Utils.callApi("getSettings");
+                if (res.status === 'success') {
+                    const settings = res.data;
+                    
+                    // A. Check Registration Toggle
+                    const isDisabled = String(settings.RegistrationDisabled || "false") === "true";
+                    if (isDisabled) {
+                        isBlocked.value = true;
+                        blockReason.value = "Registration is currently closed by the Administrator.";
+                        return;
+                    }
+
+                    // B. Check Geo-Fencing
+                    const mode = (settings.GeoRestrictionMode || 'none').toLowerCase();
+                    if (mode !== 'none') {
+                        const list = (settings.GeoRestrictionList || "").split(",").map(c => c.trim().toLowerCase());
+                        const country = (metadata.value.country || "Unknown").toLowerCase();
+                        const region = (metadata.value.region || "Unknown").toLowerCase();
+                        
+                        if (mode === 'allow' && !list.includes(country) && !list.includes(region)) {
+                            isBlocked.value = true;
+                            const locName = metadata.value.region && metadata.value.region !== 'Unknown' ? `${metadata.value.region}, ${metadata.value.country}` : metadata.value.country;
+                            blockReason.value = `Service not available in ${locName || 'your location'}.`;
+                        } else if (mode === 'block' && (list.includes(country) || list.includes(region))) {
+                            isBlocked.value = true;
+                            const locName = list.includes(region) ? metadata.value.region : metadata.value.country;
+                            blockReason.value = `Access restricted from ${locName}.`;
+                        }
+                    }
+                } else {
+                    isBlocked.value = true;
+                    blockReason.value = "System connection issue. Please refresh the page.";
+                }
+            } catch (e) {
+                console.error("Access check failed", e);
+                isBlocked.value = true;
+                blockReason.value = "System loading error. Please refresh or contact support.";
+            } finally {
+                checkingAccess.value = false;
+            }
+        };
+
+        const getSmartTag = () => {
+            const params = new URLSearchParams(window.location.search);
+            const tag = params.get('tag') || params.get('utm_source') || params.get('source') || params.get('ref');
+            if (tag) return tag.toLowerCase().trim();
+
+            const ref = document.referrer;
+            if (ref) {
+                if (ref.includes('google.com')) return 'organic_google';
+                if (ref.includes('facebook.com')) return 'organic_facebook';
+                if (ref.includes('instagram.com')) return 'organic_instagram';
+                if (ref.includes('tiktok.com')) return 'organic_tiktok';
+                if (ref.includes('bing.com')) return 'organic_bing';
+                if (ref.includes('openai.com') || ref.includes('chatgpt.com')) return 'chatgpt';
+                try {
+                    const url = new URL(ref);
+                    return 'ref_' + url.hostname.replace('www.', '');
+                } catch (e) { return 'referrer'; }
+            }
+            return 'direct';
+        };
+
+        const requestOtp = async () => {
+            loading.value = true;
+            errorMsg.value = '';
+            try {
+                const res = await Utils.callApi("sendOTP", { 
+                    phone: form.value.phone,
+                    tag: getSmartTag()
+                });
+                if (res.status === 'success') {
+                    requiresOtp.value = true;
+                    timeLeft.value = 300;
+                    timerExpired.value = false;
+                    clearInterval(timerInterval);
+                    timerInterval = setInterval(() => {
+                        if (timeLeft.value > 0) timeLeft.value--;
+                        else { timerExpired.value = true; clearInterval(timerInterval); }
+                    }, 1000);
+                } else {
+                    errorMsg.value = res.message;
+                }
+            } catch(e) { errorMsg.value = "Network Error. Please try again."; }
+            loading.value = false;
+        };
+
+        const verifyAndGenerate = async () => {
+            loading.value = true;
+            errorMsg.value = '';
+            try {
+                // 1. Verify code
+                const vRes = await Utils.callApi("verifyOTP", { phone: form.value.phone, otp: form.value.otp });
+                if (vRes.status !== 'success') {
+                    errorMsg.value = vRes.message;
+                    loading.value = false;
+                    return;
+                }
+
+                // 2. Generate license with metadata for tags & tracking
+                const gRes = await Utils.callApi("generateLicense", { 
+                    ...form.value, 
+                    tag: getSmartTag(),
+                    metadata: metadata.value 
+                });
+
+                if (gRes.status === 'success') {
+                    generatedLicense.value = gRes.key;
+                    requiresOtp.value = false;
+                    clearInterval(timerInterval);
+                } else {
+                    errorMsg.value = gRes.message;
+                }
+            } catch(e) { errorMsg.value = "Server connection error."; }
+            loading.value = false;
+        };
+
+        const resetForm = () => {
+            generatedLicense.value = '';
+            errorMsg.value = '';
+            requiresOtp.value = false;
+            form.value.otp = '';
+            clearInterval(timerInterval);
+        };
+
+        onMounted(() => checkSystemAccess());
+        onUnmounted(() => clearInterval(timerInterval));
+
+        return { form, loading, errorMsg, generatedLicense, requiresOtp, formattedTime, timerExpired, checkingAccess, isBlocked, blockReason, requestOtp, verifyAndGenerate, resetForm };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Login - License Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .login-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: var(--bg-color);
+      padding: var(--spacing-md);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: var(--spacing-xl);
+    }
+    .login-header {
+      text-align: center;
+      margin-bottom: var(--spacing-xl);
+    }
+    .error-msg {
+      color: var(--danger-color);
+      margin-bottom: var(--spacing-md);
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body class="dark-theme">
+
+  <div id="app" class="login-container">
+    <div class="card login-card">
+      <div class="login-header">
+        <h2>System Login</h2>
+        <p style="color: var(--text-secondary)">Enter your credentials to continue</p>
+      </div>
+
+      <div v-if="error" class="error-msg">{{ error }}</div>
+
+      <form v-if="!showForgot" @submit.prevent="handleLogin">
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control" v-model="email" required placeholder="admin@example.com">
+        </div>
+
+        <div class="form-group mb-md">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" v-model="password" required placeholder="••••••••">
+          <div style="text-align: right; margin-top: 8px;">
+            <a href="#" @click.prevent="showForgot = true" style="font-size: 13px; color: var(--text-secondary);">Forgot Password?</a>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
+          {{ loading ? 'Authenticating...' : 'Sign In' }}
+        </button>
+      </form>
+
+      <form v-else @submit.prevent="handleForgot">
+        <div class="form-group mb-md">
+          <label class="form-label">Email Address</label>
+          <input type="email" class="form-control" v-model="forgotEmail" required placeholder="Enter your email">
+          <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">We will send a new temporary password to this email.</p>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" :disabled="loading">
+          {{ loading ? 'Sending...' : 'Reset Password' }}
+        </button>
+        <button type="button" class="btn btn-outline btn-block mt-sm" style="margin-top: 10px;" @click="showForgot = false" :disabled="loading">
+          Back to Login
+        </button>
+        <div v-if="successMsg" style="color: var(--success-color); font-size: 14px; text-align: center; margin-top: 15px;">
+          {{ successMsg }}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="js/config.js?v=1.0.3"></script>
+  <script src="js/utils.js?v=1.0.3"></script>
+  <script src="js/auth.js?v=1.0.3"></script>
+  
+  <script>
+    const initDiscovery = async () => {
+      if (!CONFIG.WEB_URL) {
+        const discovered = await Utils.autoDiscoverSatellite();
+        if (discovered) {
+          window.location.reload();
+        } else {
+          window.location.href = "activation.html";
+        }
+      }
+    };
+    initDiscovery();
+
+    const { createApp, ref } = Vue;
+
+    createApp({
+      setup() {
+        const email = ref(''); // Clear pre-filled
+        const password = ref(''); // Clear pre-filled
+        const forgotEmail = ref('');
+        const showForgot = ref(false);
+        const loading = ref(false);
+        const error = ref('');
+        const successMsg = ref('');
+
+        // Redirect if already logged in
+        if (Auth.isAuthenticated()) {
+          window.location.href = "dashboard.html";
+        }
+
+        const handleLogin = async () => {
+          loading.value = true;
+          error.value = '';
+          successMsg.value = '';
+          
+          const success = await Auth.login(email.value, password.value);
+          if (success) {
+            window.location.href = "dashboard.html";
+          } else {
+            error.value = "Invalid email or password.";
+          }
+          
+          loading.value = false;
+        };
+
+        const handleForgot = async () => {
+          loading.value = true;
+          error.value = '';
+          successMsg.value = '';
+
+          try {
+            const response = await Utils.callApi("forgotPassword", { email: forgotEmail.value });
+            if (response.status === "success") {
+              successMsg.value = "A new temporary password has been sent to your email.";
+              forgotEmail.value = '';
+            } else {
+              error.value = response.message || "Failed to reset password.";
+            }
+          } catch(e) {
+            error.value = "An unknown network error occurred.";
+          }
+          
+          loading.value = false;
+        };
+
+        return { email, password, forgotEmail, showForgot, loading, error, successMsg, handleLogin, handleForgot };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

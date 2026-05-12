@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Dashboard - License Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=1.0.4">
+  <script src="js/vue.global.prod.js"></script>
+</head>
+
+<body>
+
+  <div id="app" class="app-container" v-cloak>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" :class="{ 'mobile-open': sidebarOpen }">
+      <div class="sidebar-header" style="flex-direction: column; gap: 16px;">
+        <div class="brand d-flex align-center gap-sm" style="font-size:18px">
+          <span style="font-size:24px">●</span> <span class="brand-text">LicenseGen</span>
+        </div>
+        <button class="btn btn-primary btn-block" style="font-size:13px; font-weight:600;" @click="openQuickCreate">
+          <span style="margin-right:8px; font-size:16px">+</span> <span class="btn-text">Quick Create</span>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'dashboard' }"
+          @click.prevent="switchTab('dashboard')">
+          <span style="width:20px; text-align:center">📊</span> <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'clients' }"
+          @click.prevent="switchTab('clients')">
+          <span style="width:20px; text-align:center">👥</span> <span class="nav-text">Clients Data</span>
+        </a>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'licenses' }"
+          @click.prevent="switchTab('licenses')">
+          <span style="width:20px; text-align:center">🔑</span> <span class="nav-text">Licenses Ledger</span>
+        </a>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'blocklist' }"
+          @click.prevent="switchTab('blocklist')">
+          <span style="width:20px; text-align:center">🚫</span> <span class="nav-text">Blocklist Control</span>
+        </a>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'reports' }"
+          @click.prevent="switchTab('reports')">
+          <span style="width:20px; text-align:center">📈</span> <span class="nav-text">Reports & Stats</span>
+        </a>
+
+        <div class="sidebar-heading"
+          style="font-size:12px; font-weight:600; color:var(--text-secondary); margin: 24px 12px 8px 12px; text-transform:uppercase;">
+          System</div>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'api' }" @click.prevent="switchTab('api')">
+          <span style="width:20px; text-align:center">⚡</span> <span class="nav-text">API & Webhooks</span>
+        </a>
+        <a href="#" class="nav-item" :class="{ active: currentTab === 'settings' }"
+          @click.prevent="switchTab('settings')">
+          <span style="width:20px; text-align:center">⚙️</span> <span class="nav-text">Settings & Rules</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer" @click="modals.profile = true" style="cursor:pointer; position:relative;"
+        title="Click to view Profile">
+        <div class="user-avatar">{{ user.name ? user.name.charAt(0).toUpperCase() : 'U' }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ user.name }}</div>
+          <div class="user-email" style="font-weight:400">{{ user.email || 'Admin' }}</div>
+        </div>
+        <div style="color:var(--text-secondary); cursor:pointer; padding:4px;" @click.stop="handleLogout"
+          title="Logout">⋮</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" @click="sidebarOpen = false">
+
+
+      <!-- System Error / Auth Required Banner -->
+      <div v-if="systemError" class="card"
+        style="border: 1px solid var(--danger-color); background-color: #fef2f2; margin-bottom: 24px; padding: 16px 24px;">
+        <h3 style="color:var(--danger-color); font-size: 16px; margin-bottom: 8px;">⚠️ Google Apps Script Authorization
+          Required</h3>
+        <p style="color:var(--danger-color); font-size: 14px; margin-bottom: 12px;">Your backend script has lost
+          authorization. This usually happens if you updated the backend code or added new features like emails. You
+          must re-authorize to use the system.</p>
+        <a :href="gasEditorUrl" target="_blank" class="btn btn-danger"
+          style="text-decoration:none; padding: 8px 16px;">Open Script Editor to Authorize</a>
+      </div>
+
+      <div class="page-header">
+        <div class="d-flex align-center gap-sm">
+          <button class="mobile-toggle" @click.stop="sidebarOpen = !sidebarOpen">☰</button>
+          <h2 class="page-title">{{ pageTitle }}</h2>
+        </div>
+        <div class="d-flex gap-sm">
+          <button v-if="currentTab === 'clients'" class="btn btn-outline" @click="loadClients">↻ Refresh</button>
+          <button v-if="currentTab === 'licenses'" class="btn btn-outline" @click="loadLicenses">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Dashboard Tab -->
+      <div v-show="currentTab === 'dashboard'">
+        <div class="summary-cards">
+
+          <div class="card stat-card" style="margin-bottom:0">
+            <div class="stat-header">
+              <span>Total Licenses</span>
+              <span>🔑</span>
+            </div>
+            <div class="stat-value">{{ licensesList.length }}</div>
+            <div class="stat-desc">
+              <span style="color:var(--success-color)">↗ +12.5%</span> from last month
+            </div>
+          </div>
+
+          <div class="card stat-card" style="margin-bottom:0">
+            <div class="stat-header">
+              <span>Registered Clients</span>
+              <span>👥</span>
+            </div>
+            <div class="stat-value">{{ clientsList.length }}</div>
+            <div class="stat-desc">
+              <span style="color:var(--text-secondary)">Steady growth</span>
+            </div>
+          </div>
+
+          <div class="card stat-card" style="margin-bottom:0">
+            <div class="stat-header">
+              <span>Active Keys</span>
+              <span>⚡</span>
+            </div>
+            <div class="stat-value">{{ licensesList.filter(l => l.status === 'active').length }}</div>
+            <div class="stat-desc">
+              <span style="color:var(--success-color)">Healthy usage</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="card">
+          <h3>Quick Actions</h3>
+          <p style="color:var(--text-secondary); font-size:14px; margin-top:8px">Public endpoints & generator tools</p>
+          <div class="d-flex gap-sm mt-md">
+            <a href="index.html" target="_blank" class="btn btn-primary">Open Generator Portal</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Clients Tab -->
+      <div v-show="currentTab === 'clients'">
+        <div class="card mb-md">
+          <h3 style="margin-bottom: 16px;">Advanced Filters</h3>
+          <div class="d-flex gap-sm flex-wrap">
+            <input type="text" class="form-control" placeholder="Search Name, Phone, Email..." v-model="clientFilters.query" style="flex:1; min-width: 200px;">
+            <input type="text" class="form-control" placeholder="Search Tag..." v-model="clientFilters.tag" style="width: 150px;">
+            <input type="text" class="form-control" placeholder="Location (City/Country)..." v-model="clientFilters.location" style="width: 180px;">
+            <select class="form-control" v-model="clientFilters.status" style="width: 130px;">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+          <div class="d-flex gap-sm flex-wrap mt-sm align-center">
+            <span style="font-size: 13px; color: var(--text-secondary);">Joined between:</span>
+            <input type="date" class="form-control" v-model="clientFilters.dateStart" style="width: 150px;">
+            <span style="font-size: 13px; color: var(--text-secondary);">and</span>
+            <input type="date" class="form-control" v-model="clientFilters.dateEnd" style="width: 150px;">
+            <button class="btn btn-outline" style="margin-left: auto;" @click="clientFilters = {query:'', tag:'', location:'', status:'', dateStart:'', dateEnd:''}">Clear Filters</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0; overflow:hidden">
+          <div class="table-container" style="border:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Phone No</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Limit</th>
+                  <th>Sync</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loading.clients">
+                  <td colspan="6" style="text-align:center">Loading data...</td>
+                </tr>
+                <tr v-if="!loading.clients && filteredClients.length === 0">
+                  <td colspan="6" style="text-align:center">No clients match your criteria.</td>
+                </tr>
+                <tr v-for="c in filteredClients" :key="c.phone" @click="openClientModal(c)" style="cursor: pointer;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.05)'" onmouseout="this.style.backgroundColor='transparent'">
+                  <td style="font-weight:500">{{ c.phone }}</td>
+                  <td>{{ c.name || '-' }}</td>
+                  <td style="color:var(--text-secondary)">{{ c.email }}</td>
+                  <td @click.stop>
+                    <select v-model="c.status" @change="updateClient(c)"
+                      style="padding: 4px; border:1px solid var(--border-color); border-radius: 6px; font-size:13px; background:transparent">
+                      <option value="active">Active</option>
+                      <option value="suspended">Suspended</option>
+                      <option value="blocked">Blocked</option>
+                    </select>
+                    <span v-if="c.status === 'active'" class="badge badge-success" style="margin-left:8px">✓</span>
+                    <span v-if="c.status === 'blocked'" class="badge badge-danger" style="margin-left:8px">✗</span>
+                  </td>
+                  <td @click.stop>
+                    <div class="d-flex align-center gap-sm">
+                      <span style="color:var(--text-secondary)">{{ c.licensesgenerated || 0 }} / </span>
+                      <input type="number" v-model="c.maxlicenses" @change="updateClient(c)" class="form-control"
+                        style="width: 70px; padding: 4px 8px;" min="0">
+                    </div>
+                  </td>
+                  <td>
+                    <span v-if="c.updating" class="badge badge-neutral">Saved</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Licenses Tab -->
+      <div v-show="currentTab === 'licenses'">
+        <div class="card" style="padding:0; overflow:hidden">
+          <div class="table-container" style="border:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>License Key</th>
+                  <th>Phone Owner</th>
+                  <th>Generation Date</th>
+                  <th>Expiry Date</th>
+                  <th>Status</th>
+                  <th>Delivery</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="loading.licenses">
+                  <td colspan="7" style="text-align:center">Loading data...</td>
+                </tr>
+                <tr v-if="!loading.licenses && licensesList.length === 0">
+                  <td colspan="7" style="text-align:center">No licenses generated yet.</td>
+                </tr>
+                <tr v-for="l in licensesList" :key="l.licensekey">
+                  <td style="font-family:monospace; font-weight:600">{{ l.licensekey }}</td>
+                  <td>{{ l.phone }}</td>
+                  <td style="color:var(--text-secondary)">{{ formatDate(l.createdat) }}</td>
+                  <td>
+                    <input type="date" v-model="l.expiryInput" @change="updateLicense(l)" class="form-control"
+                      style="padding: 4px 8px; width: 140px;">
+                  </td>
+                  <td>
+                    <select v-model="l.status" @change="updateLicense(l)"
+                      style="padding: 4px; border:1px solid var(--border-color); border-radius: 6px; font-size:13px; background:transparent">
+                      <option value="active">Active</option>
+                      <option value="suspended">Suspended</option>
+                      <option value="blocked">Blocked</option>
+                    </select>
+                    <span v-if="l.status === 'active'" class="badge badge-success"
+                      style="margin-left:8px; display:none">✓</span>
+                  </td>
+                  <td>
+                    <span :class="l.mailsent === 'Yes' ? 'badge badge-success' : 'badge badge-warning'">{{ l.mailsent
+                      === 'Yes' ? 'Delivered' : 'Failed' }}</span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-center gap-sm">
+                      <button class="btn btn-outline" style="padding: 4px 8px; font-size:12px;"
+                        @click="resendEmail(l.licensekey)" :disabled="l.resending">
+                        {{ l.resending ? 'Sending...' : 'Resend' }}
+                      </button>
+                      <span v-if="l.updating" class="badge badge-neutral">Saved</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blocklist Tab -->
+      <div v-show="currentTab === 'blocklist'">
+        <div class="card mb-md">
+            <h3>Phone Number Blocklist</h3>
+            <p style="color:var(--text-secondary); margin-bottom: 12px; font-size:14px">These numbers will be prevented from requesting OTPs or registering for any license.</p>
+            <div class="form-group">
+                <label class="form-label">Phone Numbers (Comma-separated)</label>
+                <textarea class="form-control" v-model="settingsData.BlockedPhoneList" rows="5" placeholder="e.g. 60123456789, 60198765432"></textarea>
+                <small style="color:var(--text-secondary); font-size:12px">Numbers will be automatically normalized (removes +, -, spaces).</small>
+            </div>
+        </div>
+
+        <div class="card mb-md">
+            <h3>Source/Tag Blocklist</h3>
+            <p style="color:var(--text-secondary); margin-bottom: 12px; font-size:14px">
+              Block registrations from specific marketing sources. This system automatically detects 
+              <strong>UTM parameters</strong> (utm_source, source, ref) and <strong>Organic Traffic</strong> (google, facebook, chatgpt, etc.).
+            </p>
+            <div class="form-group">
+                <label class="form-label">Blocked Tags/Sources (Comma-separated)</label>
+                <textarea class="form-control" v-model="settingsData.BlockedTagList" rows="5" placeholder="e.g. google, fbads, chatgpt, organic_google"></textarea>
+                <small style="color:var(--text-secondary); font-size:12px">Tag matching is case-insensitive. You can block organic sources using keywords like 'organic_google', 'organic_facebook', or 'chatgpt'.</small>
+            </div>
+        </div>
+        
+        <div class="card">
+            <button class="btn btn-primary" @click="saveSettings" :disabled="loading.settings">
+                {{ loading.settings ? 'Saving...' : 'Save Blocklist Rules' }}
+            </button>
+        </div>
+      </div>
+
+      <!-- API Tab -->
+      <div v-show="currentTab === 'api'">
+        <div class="card">
+          <h3>API Integration</h3>
+          <p style="color:var(--text-secondary); margin-bottom: var(--spacing-md); font-size:14px">Generate an API
+            Secret Key to securely connect SaaS platforms to your license database.</p>
+
+          <div
+            style="background:#f8fafc; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <h4 style="margin-bottom: 12px; font-size:14px">Current API Secret</h4>
+            <div class="d-flex gap-sm align-center" style="margin-bottom: 12px;">
+              <input type="text" class="form-control" style="font-family: monospace; background: white; max-width:400px"
+                :value="settingsData.APISecret || 'Not Generated'" disabled>
+              <button class="btn btn-primary" @click="generateApiKey" :disabled="loading.api">
+                {{ settingsData.APISecret ? 'Regenerate' : 'Generate Key' }}
+              </button>
+              <button class="btn btn-outline" style="color:var(--danger-color);" @click="removeApiKey"
+                v-if="settingsData.APISecret" :disabled="loading.api">
+                Remove
+              </button>
+            </div>
+            <div style="color:var(--text-secondary); font-size:13px">Anyone with this key can query the validity of
+              licenses in your system. Keep it secure.</div>
+          </div>
+
+          <div class="pt-md mt-md mb-md" style="border-top:1px solid var(--border-color)">
+            <h3>Outgoing Webhooks (n8n, Make)</h3>
+            <p style="color:var(--text-secondary); margin-bottom: var(--spacing-sm); font-size:14px">Paste your
+              automation Webhook URL below. We will push events like <code>license_generated</code> in real-time.</p>
+            <div class="d-flex gap-sm align-center flex-wrap" style="width:100%">
+              <input type="url" class="form-control" placeholder="https://your-n8n-instance.com/webhook/..."
+                v-model="settingsData.N8NWebhookURL" style="min-width:300px; flex:1">
+              <select class="form-control" v-model="settingsData.webhookTestEvent" style="width:180px">
+                <option value="license_generated">License Generated</option>
+                <option value="license_activated">License Activated</option>
+              </select>
+              <input type="email" class="form-control" v-model="webhookTestEmail" placeholder="Test Email (Optional)" style="width:180px">
+              <input type="text" class="form-control" v-model="webhookTestTag" placeholder="Tag (Optional)" style="width:140px">
+              <input type="text" class="form-control" v-model="webhookTestRegion" placeholder="Region Override" style="width:140px">
+              <input type="text" class="form-control" v-model="webhookTestCountry" placeholder="Country Override" style="width:140px">
+            </div>
+            <div class="d-flex gap-sm align-center flex-wrap" style="width:100%; margin-top: 10px;">
+              <input type="text" class="form-control" v-model="webhookTestPhone" placeholder="Phone Override" style="width:150px">
+              <input type="text" class="form-control" v-model="webhookTestOS" placeholder="OS Override" style="width:140px">
+              <input type="text" class="form-control" v-model="webhookTestBrowser" placeholder="Browser Override" style="width:140px">
+              <button class="btn btn-primary" @click="saveSettings" :disabled="loading.settings">
+                {{ loading.settings ? 'Saving...' : 'Save Webhook' }}
+              </button>
+              <button class="btn btn-outline" @click="runWebhookTest"
+                :disabled="loading.settings || !settingsData.N8NWebhookURL || testingWebhook">
+                <span v-if="testingWebhook"><i class="fas fa-spinner fa-spin"></i> Testing...</span>
+                <span v-else>Send Test</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-md mt-xl mb-md" style="border-top:1px solid var(--border-color)">
+            <h3 style="margin-bottom: 24px">Developer Documentation</h3>
+
+            <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 14px;">1. Validating a License (Incoming API)</h4>
+            <div style="background:#0f172a; color:#f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+              <strong style="color:#38bdf8">POST</strong> {{ configUrl || 'https://script.google.com/.../exec' }}<br><br>
+              <strong>Headers:</strong><br>
+              Content-Type: application/json<br><br>
+              <strong>Body:</strong><br>
+              {<br>
+              &nbsp;&nbsp;"action": "validateLicense",<br>
+              &nbsp;&nbsp;"payload": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"apiKey": "{{ settingsData.APISecret || 'YOUR_API_SECRET' }}",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"licenseKey": "ABCD-1234-WXYZ-5678"<br>
+              &nbsp;&nbsp;}<br>
+              }
+            </div>
+
+            <h4 style="margin-top: 16px; margin-bottom: 8px; font-size: 14px;">Example API Response</h4>
+            <div style="background:#0f172a; color:#f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+              {<br>
+              &nbsp;&nbsp;"status": "success",<br>
+              &nbsp;&nbsp;"valid": true,<br>
+              &nbsp;&nbsp;"message": "License Active",<br>
+              &nbsp;&nbsp;"data": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"licenseKey": "ABCD-1234-WXYZ-5678",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"name": "John Doe",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"phone": "60123456789",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"email": "user@example.com",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"status": "active",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"expiryDate": "2025-10-27T10:00:00Z",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"createdAt": "2024-10-27T10:00:00Z",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"tag": "google"<br>
+              &nbsp;&nbsp;}<br>
+              }
+            </div>
+
+            <h4 style="margin-top: 32px; margin-bottom: 8px; font-size: 14px;">2. Webhook Event Payloads (Outgoing)</h4>
+            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:12px;">The system pushes JSON data to your Webhook URL automatically for these events:</p>
+            
+            <div style="background:#0f172a; color:#f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto; margin-bottom: 16px;">
+              <strong style="color:#38bdf8">EVENT:</strong> license_generated<br><br>
+              {<br>
+              &nbsp;&nbsp;"event": "license_generated",<br>
+              &nbsp;&nbsp;"data": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"event": "license_generated",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"licenseKey": "ABCD-1234-WXYZ-5678",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"name": "John Doe",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"phone": "60123456789",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"email": "user@example.com",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"createdAt": "2023-10-27T10:00:00Z",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"expiryDate": "2024-10-27T10:00:00Z",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"metadata": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ip": "123.45.67.89",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"os": "Windows",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"browser": "Chrome"<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+              &nbsp;&nbsp;}<br>
+              }
+            </div>
+
+            <div style="background:#0f172a; color:#f8fafc; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto;">
+              <strong style="color:#38bdf8">EVENT:</strong> license_activated<br><br>
+              {<br>
+              &nbsp;&nbsp;"event": "license_activated",<br>
+              &nbsp;&nbsp;"data": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"event": "license_activated",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"licenseKey": "ABCD-1234-WXYZ-5678",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"name": "John Doe",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"phone": "60123456789",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"email": "user@example.com",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"activatedAt": "2023-10-27T10:30:00Z",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;"metadata": {<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"ip": "123.45.67.89",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"os": "Android",<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"browser": "Samsung Browser"<br>
+              &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+              &nbsp;&nbsp;}<br>
+              }
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Settings Tab -->
+      <div v-show="currentTab === 'settings'">
+
+        <div class="card mt-md">
+          <h3>System Configuration & Activation</h3>
+          <p style="color:var(--text-secondary); margin-bottom: var(--spacing-md); font-size:14px">Manage core system
+            connections. These are saved to your browser's local storage.</p>
+          <form @submit.prevent="saveSystemConfig">
+            <div class="form-group">
+              <label class="form-label">Google Apps Script WEB URL</label>
+              <input type="url" class="form-control" v-model="systemConfig.webUrl" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">GAS Editorial URL</label>
+              <input type="url" class="form-control" v-model="systemConfig.gasEditorUrl">
+            </div>
+            <div class="form-group" style="display:flex; gap:16px;">
+              <div style="flex:1">
+                <label class="form-label">GitHub Owner</label>
+                <input type="text" class="form-control" v-model="systemConfig.githubOwner">
+              </div>
+              <div style="flex:1">
+                <label class="form-label">GitHub Repo</label>
+                <input type="text" class="form-control" v-model="systemConfig.githubRepo">
+              </div>
+            </div>
+            <div class="mt-md pt-md">
+              <button type="submit" class="btn btn-primary" :disabled="loading.general">
+                Save Configuration
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card mt-md">
+          <h3>System Updates & Changelog</h3>
+          <p style="color:var(--text-secondary); margin-bottom: var(--spacing-md); font-size:14px">Fetch updates and
+            changelogs from your private GitHub repository.</p>
+
+          <div class="form-group mb-xl" style="max-width: 400px;">
+            <label class="form-label">GitHub Personal Access Token (PAT)</label>
+            <input type="password" class="form-control" v-model="settingsData.GithubPAT" placeholder="ghp_xxxxxxxxxxxx"
+              @change="saveSettings">
+            <small style="color:var(--text-secondary); font-size:12px">Required to fetch updates from your private repo.
+              Needs 'repo' scope.</small>
+          </div>
+
+          <div class="pt-md mt-md" style="border-top:1px solid var(--border-color)">
+            <div class="d-flex justify-between align-center mb-md">
+              <h4 style="font-size:14px">Latest Commits (Changelog)</h4>
+              <button class="btn btn-outline" style="font-size:12px; padding:4px 8px" @click="fetchChangelog">Refresh
+                Logs</button>
+            </div>
+
+            <div v-if="loading.github"
+              style="text-align:center; padding: 20px; color:var(--text-secondary); font-size:13px">Checking GitHub...
+            </div>
+            <div v-else-if="changelog.length === 0"
+              style="text-align:center; padding: 20px; color:var(--text-secondary); font-size:13px">No changelog found.
+              Ensure your PAT is saved.</div>
+            <ul v-else
+              style="list-style:none; padding:0; margin:0; border: 1px solid var(--border-color); border-radius: 8px; overflow:hidden;">
+              <li v-for="log in changelog" :key="log.sha"
+                style="padding: 12px 16px; border-bottom: 1px solid var(--border-color); background:var(--surface-color);">
+                <div style="font-weight: 500; font-size:14px; color:var(--text-primary); margin-bottom:4px">{{
+                  log.commit.message }}</div>
+                <div style="color:var(--text-secondary); font-size:12px">{{ formatDate(log.commit.author.date) }} • {{
+                  log.sha.substring(0,7) }}</div>
+              </li>
+            </ul>
+
+            <div class="mt-xl">
+              <button class="btn btn-primary" @click="triggerSystemUpdate" :disabled="loading.update">
+                {{ loading.update ? 'Updating System...' : 'Update System Now (Git Pull)' }}
+              </button>
+              <p style="color:var(--text-secondary); margin-top:8px; font-size:12px">This triggers the local
+                <code>update.php</code> script to fetch from GitHub.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-md">
+          <h3>Global Configuration</h3>
+          <p style="color:var(--text-secondary); margin-bottom: var(--spacing-md); font-size:14px">Manage generation
+            rules and system defaults.</p>
+
+          <form @submit.prevent="saveSettings">
+            <div style="display:flex; flex-wrap:wrap; gap: 40px">
+              <div style="flex:1; min-width:300px">
+                <h4 class="mb-sm border-bottom pb-sm" style="font-size:14px; color:var(--text-secondary)">Setup Defaults
+                </h4>
+                <div class="form-group">
+                  <label class="form-label">Member Prefix</label>
+                  <input type="text" class="form-control" v-model="settingsData.MemberPrefix">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Member Running ID (Current)</label>
+                  <input type="number" class="form-control" v-model="settingsData.MemberRunningID" min="1">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Default Max Licenses Per Phone</label>
+                  <input type="number" class="form-control" v-model="settingsData.DefaultMaxLicenses" min="1">
+                </div>
+                <div class="form-group" style="display:flex; gap:16px;">
+                  <div style="flex:2">
+                    <label class="form-label">Default Expiry Duration</label>
+                    <input type="number" class="form-control" v-model="settingsData.DefaultDurationValue"
+                      placeholder="e.g. 1 (Empty = Lifetime)">
+                  </div>
+                  <div style="flex:1">
+                    <label class="form-label">Unit</label>
+                    <select class="form-control" v-model="settingsData.DefaultDurationUnit">
+                      <option value="days">Days</option>
+                      <option value="weeks">Weeks</option>
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style="flex:1; min-width:300px">
+                <h4 class="mb-sm border-bottom pb-sm" style="font-size:14px; color:var(--text-secondary)">Wasapmatic API
+                </h4>
+                <div class="form-group">
+                  <label class="form-label">Wasapmatic Secret</label>
+                  <input type="password" class="form-control" v-model="settingsData.WasapmaticSecret">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Wasapmatic Account ID</label>
+                  <input type="text" class="form-control" v-model="settingsData.WasapmaticAccountID">
+                </div>
+              </div>
+
+              <div style="flex:1; min-width:300px">
+                <h4 class="mb-sm border-bottom pb-sm" style="font-size:14px; color:var(--text-secondary)">Geo-Restriction & Registration</h4>
+                <div class="form-group">
+                  <label class="form-label">Restriction Mode</label>
+                  <select class="form-control" v-model="settingsData.GeoRestrictionMode">
+                    <option value="none">Disabled (Allow All)</option>
+                    <option value="allow">Whitelist (Allow Only Specified)</option>
+                    <option value="block">Blacklist (Block Specified)</option>
+                  </select>
+                </div>
+                <div class="form-group" v-if="settingsData.GeoRestrictionMode !== 'none'">
+                  <label class="form-label">Locations List (Comma-separated)</label>
+                  <textarea class="form-control" v-model="settingsData.GeoRestrictionList" 
+                    placeholder="e.g. Malaysia, Selangor, Kuala Lumpur" rows="2"></textarea>
+                  <small style="color:var(--text-secondary); font-size:12px">Enter country or state names exactly as shown in your Lead Location data.</small>
+                </div>
+                <div class="form-group mt-md pt-md" style="border-top:1px solid var(--border-color)">
+                  <div class="d-flex align-center justify-between">
+                    <div>
+                      <label class="form-label" style="margin-bottom:0">Disable Public Registration</label>
+                      <small style="color:var(--text-secondary); font-size:12px">Shut down the generator portal immediately.</small>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" v-model="settingsData.RegistrationDisabled" true-value="true" false-value="false">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-md pt-md" style="border-top:1px solid var(--border-color);">
+              <button type="submit" class="btn btn-primary" :disabled="loading.settings">
+                {{ loading.settings ? 'Saving Config...' : 'Save Settings' }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card mt-md" style="border: 1px solid var(--danger-color)">
+          <h3 style="color:var(--danger-color)">Danger Zone</h3>
+          <p style="color:var(--text-secondary); margin-bottom: var(--spacing-md); font-size:14px">These actions are
+            irreversible and will permanently delete data from your backing Google Sheet.</p>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div class="card" style="border: 1px solid var(--warning-color); background: rgba(245, 158, 11, 0.05);">
+              <h4 style="color:var(--warning-color)">Reset Licenses Ledger</h4>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px">Wipes all generated licenses and resets usage counts for all clients.</p>
+              <button class="btn btn-outline" style="color:var(--warning-color); border-color:var(--warning-color)" @click="confirmReset('licenses')" :disabled="loading.general">
+                Clear All Licenses
+              </button>
+            </div>
+            <div class="card" style="border: 1px solid var(--danger-color); background: rgba(239, 68, 68, 0.05);">
+              <h4 style="color:var(--danger-color)">Reset System Admins</h4>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px">Wipes all admin accounts except the primary superadmin.</p>
+              <button class="btn btn-outline" style="color:var(--danger-color); border-color:var(--danger-color)" @click="confirmReset('members')" :disabled="loading.general">
+                Reset Admins
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports Tab [NEW] -->
+        <div v-if="currentTab === 'reports'">
+          <div class="d-flex justify-between align-center mb-md">
+            <div>
+              <h2 style="margin:0">System Analytics</h2>
+              <p style="color:var(--text-secondary); font-size:14px">Performance and user distribution reports.</p>
+            </div>
+            <button class="btn btn-outline" @click="exportToCSV">
+              <span style="margin-right:8px">📥</span> Export All Clients (CSV)
+            </button>
+          </div>
+
+          <div class="card mb-lg" style="padding: 16px; border: 1px solid var(--border-color); background: var(--surface-color);">
+            <div class="d-flex gap-md flex-wrap align-center">
+              <div style="flex:1; min-width: 200px;" class="d-flex gap-sm">
+                <input type="text" class="form-control" placeholder="Filter by Tag (Source)..." v-model="clientFilters.tag">
+                <input type="text" class="form-control" placeholder="Filter by Country..." v-model="clientFilters.location">
+              </div>
+              <div class="d-flex gap-sm align-center">
+                <span style="font-size: 13px; color: var(--text-secondary);">Date Range:</span>
+                <input type="date" class="form-control" v-model="clientFilters.dateStart" style="width: 140px;">
+                <span style="font-size: 13px; color: var(--text-secondary);">to</span>
+                <input type="date" class="form-control" v-model="clientFilters.dateEnd" style="width: 140px;">
+                <button class="btn btn-outline" @click="clientFilters = {query:'', tag:'', location:'', status:'', dateStart:'', dateEnd:''}" style="padding: 8px;">✕</button>
+              </div>
+            </div>
+            <div v-if="clientFilters.tag || clientFilters.location || clientFilters.dateStart || clientFilters.dateEnd" class="mt-sm" style="font-size: 12px; color: var(--primary-color); font-weight: 600;">
+              ⚡ Filtering Active: Showing {{ analytics.totalClients }} leads matching your criteria.
+            </div>
+          </div>
+
+          <div class="grid-4 mb-lg">
+            <div class="card analytic-card">
+              <div class="stat-label">Unique Leads</div>
+              <div class="stat-value">{{ analytics.totalClients }}</div>
+            </div>
+            <div class="card analytic-card" style="border-color:var(--success-color)">
+              <div class="stat-label">Active Keys</div>
+              <div class="stat-value">{{ analytics.activeLicenses }}</div>
+            </div>
+            <div class="card analytic-card" style="border-color:var(--danger-color)">
+              <div class="stat-label">Blocked</div>
+              <div class="stat-value">{{ analytics.blockedClients }}</div>
+            </div>
+            <div class="card analytic-card" style="border-color:var(--secondary-color)">
+              <div class="stat-label">Countries</div>
+              <div class="stat-value">{{ Object.keys(analytics.countries).length }}</div>
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap:24px">
+            <div class="card">
+              <div class="d-flex justify-between align-center mb-md">
+                <h3 style="margin:0">Lead Locations</h3>
+                <span class="badge badge-neutral">Top Countries</span>
+              </div>
+              <div style="max-height: 300px; overflow-y:auto">
+                <div v-for="(count, country) in analytics.countries" :key="country" class="mb-md">
+                  <div class="d-flex justify-between mb-xs" style="font-size:13px">
+                    <span>{{ country }}</span>
+                    <strong>{{ count }} ({{ analytics.totalClients > 0 ? Math.round(count / analytics.totalClients * 100) : 0 }}%)</strong>
+                  </div>
+                  <div style="height:6px; background:rgba(0,0,0,0.05); border-radius:3px; overflow:hidden">
+                    <div :style="{ width: (analytics.totalClients > 0 ? (count / analytics.totalClients * 100) : 0) + '%', background: 'var(--primary-color)' }" style="height:100%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+                <div class="d-flex justify-between align-center mb-md">
+                    <h3 style="margin:0">Top Lead Sources</h3>
+                    <span class="badge badge-neutral">By Tag</span>
+                </div>
+                <div class="table-container" style="border:none">
+                    <table style="font-size:13px">
+                        <thead>
+                            <tr style="background:transparent">
+                                <th style="background:transparent; padding:8px 0">Source Tag</th>
+                                <th style="background:transparent; padding:8px 0" class="text-right">Total Leads</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="(count, src) in analytics.sources" :key="src">
+                                <td style="padding:8px 0; border-color:rgba(0,0,0,0.05)">
+                                    <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px">{{ src }}</code>
+                                </td>
+                                <td style="padding:8px 0; border-color:rgba(0,0,0,0.05)" class="text-right">
+                                    <strong>{{ count }}</strong>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+              <h3 class="mb-md">Technology Stack</h3>
+              <div class="grid-2" style="gap:24px">
+                <div>
+                  <h4 style="font-size:11px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:12px">OS Distribution</h4>
+                  <div v-for="(count, os) in analytics.os" :key="os" class="mb-sm d-flex justify-between" style="font-size:12px">
+                    <span style="display:flex; align-items:center; gap:6px">
+                        <span style="width:6px; height:6px; border-radius:50%; background:var(--primary-color)"></span>
+                        {{ os }}
+                    </span>
+                    <strong>{{ count }}</strong>
+                  </div>
+                </div>
+                <div>
+                  <h4 style="font-size:11px; text-transform:uppercase; color:var(--text-secondary); margin-bottom:12px">Browsers</h4>
+                  <div v-for="(count, br) in analytics.browsers" :key="br" class="mb-sm d-flex justify-between" style="font-size:12px">
+                    <span>{{ br }}</span>
+                    <strong>{{ count }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 class="mb-md">Registration Peak Hours</h3>
+              <div class="chart-bar-container">
+                <div class="chart-bar-item">
+                  <div class="chart-bar" :style="{ height: (analytics.timeBlocks.morning / analytics.totalClients * 100 || 5) + '%', background: 'var(--primary-color)' }"></div>
+                  <span class="chart-label">Morning</span>
+                </div>
+                <div class="chart-bar-item">
+                  <div class="chart-bar" :style="{ height: (analytics.timeBlocks.afternoon / analytics.totalClients * 100 || 5) + '%', background: '#3b82f6' }"></div>
+                  <span class="chart-label">Noon</span>
+                </div>
+                <div class="chart-bar-item">
+                  <div class="chart-bar" :style="{ height: (analytics.timeBlocks.evening / analytics.totalClients * 100 || 5) + '%', background: '#8b5cf6' }"></div>
+                  <span class="chart-label">Evening</span>
+                </div>
+                <div class="chart-bar-item">
+                  <div class="chart-bar" :style="{ height: (analytics.timeBlocks.night / analytics.totalClients * 100 || 5) + '%', background: '#f43f5e' }"></div>
+                  <span class="chart-label">Night</span>
+                </div>
+              </div>
+            </div>
+          </div>
+      </div>
+
+    </main>
+
+    <!-- Profile Modal -->
+    <div class="modal-overlay" v-if="modals.profile" @click.self="modals.profile = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>My Profile Configuration</h3>
+          <button class="modal-close" @click="modals.profile = false">×</button>
+        </div>
+        <form @submit.prevent="saveProfile">
+          <div class="form-group">
+            <label class="form-label">Current Login Email</label>
+            <input type="email" class="form-control" :value="user.email" disabled style="background:#f1f5f9">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Email (Optional)</label>
+            <input type="email" class="form-control" v-model="profileForm.newEmail" placeholder="Enter new email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password (Optional)</label>
+            <input type="password" class="form-control" v-model="profileForm.newPassword"
+              placeholder="Enter new password">
+          </div>
+          <div class="d-flex justify-between mt-md">
+            <button type="button" class="btn btn-outline" @click="modals.profile = false">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="loading.general">
+              {{ loading.general ? 'Saving...' : 'Update Profile' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Quick Create Modal -->
+    <div class="modal-overlay" v-if="modals.quickCreate" @click.self="modals.quickCreate = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Manual License Generation</h3>
+          <button class="modal-close" @click="modals.quickCreate = false">×</button>
+        </div>
+        <form @submit.prevent="submitQuickCreate">
+          <div class="form-group">
+            <label class="form-label">Select Client</label>
+            <select class="form-control" v-model="quickCreateForm.client" required>
+              <option value="" disabled>-- Select Existing Client --</option>
+              <option v-for="c in clientsList" :key="c.phone" :value="c">{{ c.name || 'Unnamed' }} ({{ c.phone }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group" v-if="quickCreateForm.client">
+            <label class="form-label">Limits Check</label>
+            <div style="font-size:13px; color:var(--text-secondary)">
+              Generated: {{ quickCreateForm.client.licensesgenerated || 0 }} / {{ quickCreateForm.client.maxlicenses }}
+            </div>
+            <div v-if="quickCreateForm.client.licensesgenerated >= quickCreateForm.client.maxlicenses"
+              style="color:var(--danger-color); font-size:12px; margin-top:4px;">
+              ⚠️ This client has reached their maximum limit. Adjust limit in Clients tab first.
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Custom Expiry Date (Optional)</label>
+            <input type="date" class="form-control" v-model="quickCreateForm.customExpiryDate">
+            <small style="color:var(--text-secondary); font-size:12px">Leave empty to use system default
+              duration.</small>
+          </div>
+
+          <div class="d-flex justify-between mt-md">
+            <button type="button" class="btn btn-outline" @click="modals.quickCreate = false">Cancel</button>
+            <button type="submit" class="btn btn-primary"
+              :disabled="loading.general || (quickCreateForm.client && quickCreateForm.client.licensesgenerated >= quickCreateForm.client.maxlicenses)">
+              {{ loading.general ? 'Generating...' : 'Generate License' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Client Details Modal [NEW] -->
+    <div class="modal-overlay" v-if="modals.clientDetails" @click.self="modals.clientDetails = false">
+      <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div class="modal-header">
+          <div>
+            <h3 style="margin:0">{{ selectedClient.name || 'Unnamed Client' }}</h3>
+            <span style="font-size: 14px; color: var(--text-secondary)">{{ selectedClient.phone }}</span>
+          </div>
+          <button class="modal-close" @click="modals.clientDetails = false">×</button>
+        </div>
+        
+        <div class="grid-2 mt-md" style="gap: 24px;">
+          <!-- Profile Section -->
+          <div class="card" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px;">
+            <h4 style="margin-bottom: 12px; color: var(--primary-color)">Client Profile</h4>
+            <div style="font-size: 14px; display: grid; gap: 8px;">
+              <div class="d-flex justify-between">
+                <span style="color: var(--text-secondary)">Email:</span>
+                <span>{{ selectedClient.email }}</span>
+              </div>
+              <div class="d-flex justify-between">
+                <span style="color: var(--text-secondary)">Status:</span>
+                <span :class="'badge badge-' + (selectedClient.status === 'active' ? 'success' : 'danger')">{{ selectedClient.status.toUpperCase() }}</span>
+              </div>
+              <div class="d-flex justify-between">
+                <span style="color: var(--text-secondary)">Joined:</span>
+                <span>{{ formatDate(selectedClient.createdat) }}</span>
+              </div>
+              <div class="d-flex justify-between">
+                <span style="color: var(--text-secondary)">Usage:</span>
+                <span>{{ selectedClient.licensesgenerated }} / {{ selectedClient.maxlicenses }} Licenses</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metadata Summary -->
+          <div class="card" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 16px;">
+            <h4 style="margin-bottom: 12px; color: var(--primary-color)">Aggregated Metadata</h4>
+            <div style="font-size: 13px; display: grid; gap: 6px;">
+              <div>
+                <span style="color: var(--text-secondary)">Unique Tags:</span>
+                <div class="d-flex flex-wrap gap-xs mt-xs">
+                  <span v-for="tag in [...new Set(selectedClient.licenses.map(l => l.tag).filter(Boolean))]" class="badge badge-neutral">{{ tag }}</span>
+                  <span v-if="!selectedClient.licenses.some(l => l.tag)" style="color: var(--text-secondary)">None</span>
+                </div>
+              </div>
+              <div class="mt-xs">
+                <span style="color: var(--text-secondary)">Recent Locations:</span>
+                <div class="d-flex flex-wrap gap-xs mt-xs">
+                  <span v-for="loc in [...new Set(selectedClient.licenses.map(l => l.metadata?.city || l.country).filter(Boolean))]" class="badge badge-neutral">{{ loc }}</span>
+                  <span v-if="!selectedClient.licenses.some(l => l.country)" style="color: var(--text-secondary)">Unknown</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- License History Table -->
+        <div class="mt-lg">
+          <h4 style="margin-bottom: 12px;">License Generation History</h4>
+          <div class="table-container" style="max-height: 300px; overflow-y: auto;">
+            <table style="font-size: 13px;">
+              <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
+                <tr>
+                  <th>Key</th>
+                  <th>Tag</th>
+                  <th>Location</th>
+                  <th>IP / OS</th>
+                  <th>Generated</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="lic in selectedClient.licenses" :key="lic.licensekey">
+                  <td style="font-family: monospace; font-weight: 600">{{ lic.licensekey }}</td>
+                  <td><span class="badge badge-neutral">{{ lic.tag || '-' }}</span></td>
+                  <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" :title="lic.country + ' / ' + lic.region">
+                    {{ lic.metadata?.city || lic.country || '-' }}
+                  </td>
+                  <td>
+                    <div style="line-height: 1.2">
+                      <div style="font-size: 11px; opacity: 0.8">{{ lic.metadata?.ip || '-' }}</div>
+                      <div style="font-size: 10px; opacity: 0.6">{{ lic.metadata?.os || '-' }} / {{ lic.metadata?.browser || '-' }}</div>
+                    </div>
+                  </td>
+                  <td style="color: var(--text-secondary)">{{ formatDate(lic.createdat) }}</td>
+                  <td><span :class="'badge badge-' + (lic.status === 'active' ? 'success' : 'danger')">{{ lic.status }}</span></td>
+                </tr>
+                <tr v-if="selectedClient.licenses.length === 0">
+                  <td colspan="6" style="text-align: center; padding: 20px; color: var(--text-secondary)">No licenses generated yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="d-flex justify-end mt-lg">
+          <button class="btn btn-primary" @click="modals.clientDetails = false">Close Details</button>
+        </div>
+      </div>
+    </div>
+
+
+  </div>
+
+  <style>
+    [v-cloak] {
+      display: none;
+    }
+  </style>
+
+  <script src="js/config.js?v=1.0.4"></script>
+  <script src="js/utils.js?v=1.0.4"></script>
+  <script src="js/auth.js?v=1.0.4"></script>
+  <script src="js/app.js?v=1.0.4"></script>
+</body>
+
+</html>
