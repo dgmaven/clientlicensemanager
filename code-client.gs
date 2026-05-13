@@ -31,7 +31,7 @@ function handleRequest(e) {
     const domain = payload.domain || "global";
  
     // 1. GLOBAL KILL-SWITCH (Ping Master)
-    const bypassActions = ["activateLicense", "ping", "validateLicense", "updateProfile"];
+    const bypassActions = ["activateLicense", "ping", "validateLicense", "updateProfile", "version", "getBranding"];
     if (!bypassActions.includes(action)) {
       // Force domain verification. 
       const currentDomain = (payload.domain || "global").toLowerCase().trim();
@@ -42,7 +42,8 @@ function handleRequest(e) {
     }
 
     switch (action) {
-      case "version": response = { status: "success", version: "1.1.0-profile-fix" }; break;
+      case "version": response = { status: "success", version: "1.1.1-branding-fix" }; break;
+      case "getBranding": response = getBranding(); break;
       case "ping": response = { status: "success", type: "satellite" }; break;
       case "login": response = login(payload); break;
       case "getSettings": response = getSettings(); break;
@@ -444,6 +445,11 @@ function testWasapmatic(p) {
  */
 function callMasterHub(action, payload) {
   try { const res = UrlFetchApp.fetch(MASTER_SCRIPT_URL, { method: "post", contentType: "application/json", payload: JSON.stringify({ action, payload }) }); return JSON.parse(res.getContentText()); } catch (e) { return { status: "error", message: "Master Offline" }; }
+}
+
+function getBranding() {
+  const s = getSettings().data;
+  return { status: "success", data: { name: s.SystemName || "License Generator", color: s.PrimaryColor || "#2563eb" } };
 }
 
 function getSettings() {
