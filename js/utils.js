@@ -131,20 +131,18 @@ const Utils = {
    * @returns {Promise<object>} JSON response
    */
   async callApi(action, payload = {}, customUrl = null) {
-    // 1. Prioritize LocalStorage if user saved a dynamic URL in Dashboard
-    const savedUrl = localStorage.getItem('SYSTEM_WEB_URL');
-    if (savedUrl && savedUrl.startsWith('http')) {
-        CONFIG.WEB_URL = savedUrl;
+    // 0. CACHE PURGE HANDLER
+    if (window.location.search.includes("purge=true")) {
+        console.warn("CACHE PURGE REQUESTED: Clearing LocalStorage");
+        localStorage.clear();
+        window.location.href = window.location.pathname;
+        return;
     }
 
     const targetUrl = (customUrl || CONFIG.WEB_URL || "").trim();
     
-    if (!targetUrl || !targetUrl.startsWith("http")) {
-      throw new Error("Invalid or missing WEB URL. Please check your system configuration.");
-    }
-
     if (CONFIG.ENV === "DEBUG") {
-      console.log(`[API CALL] Action: ${action}`, { url: targetUrl, payload });
+      console.log(`[SYSTEM v1.1.1] Action: ${action}`, { url: targetUrl });
     }
 
     // MASTER GOD-MODE INJECTION

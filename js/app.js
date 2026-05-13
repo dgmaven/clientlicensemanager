@@ -219,17 +219,23 @@ const app = createApp({
     // Profile Management
     const openProfileModal = () => { 
         const u = Auth.getUser();
-        if (!u.id) console.warn("User ID is missing from local storage. Fallback to Email lookup enabled.");
+        if (!u) {
+            alert("Session invalid. Please login again.");
+            handleLogout();
+            return;
+        }
+        if (!u.id) console.warn("User ID missing. Using Email as primary identity.");
         profileForm.value = { 
             id: u.id || '', 
             name: u.name || '', 
-            email: '', // Reset new email field
+            email: '', 
             currentEmail: u.email || '', 
             password: '' 
         };
         modals.value.profile = true; 
     };
     const saveProfile = async () => {
+        console.log("DEBUG: Saving Profile with identity:", { id: profileForm.value.id, email: profileForm.value.currentEmail });
         loading.value.general = true;
         const res = await Utils.callApi("updateProfile", profileForm.value);
         loading.value.general = false;
@@ -248,6 +254,7 @@ const app = createApp({
 
     const submitAddClient = async () => {
       loading.value.general = true;
+      console.log(`[SYSTEM v1.1.1] API Payload:`, addClientForm.value);
       const response = await Utils.callApi("createClient", addClientForm.value);
       loading.value.general = false;
       if (response.status === "success") { modals.value.addClient = false; loadClients(); }

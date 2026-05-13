@@ -6,7 +6,13 @@
 const CONFIG = {
   // Dynamic settings from localStorage
   get WEB_URL() {
-    return localStorage.getItem('SYSTEM_WEB_URL') || this.DEFAULT_WEB_URL || "";
+    const stored = localStorage.getItem('SYSTEM_WEB_URL');
+    if (stored && this.DEFAULT_WEB_URL && stored !== this.DEFAULT_WEB_URL) {
+      console.log("Config Sync: System URL updated to match config.js");
+      localStorage.setItem('SYSTEM_WEB_URL', this.DEFAULT_WEB_URL);
+      return this.DEFAULT_WEB_URL;
+    }
+    return stored || this.DEFAULT_WEB_URL || "";
   },
   set WEB_URL(v) { localStorage.setItem('SYSTEM_WEB_URL', v); },
 
