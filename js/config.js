@@ -11,7 +11,7 @@ const CONFIG = {
   set WEB_URL(v) { localStorage.setItem('SYSTEM_WEB_URL', v); },
 
   // Pre-configured URL to bypass activation on fresh browsers
-  DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbxJTOJ_BSY45Zv11yiVHyYhhJ3QeHYqavQ8IdK25lX3QWheSZYEsvPJJKvWEFRIvAqx/exec",
+  DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbwkaOl2ctkcRfTvNdsvYpNFVTah9PBjQx0QULPCGOLnfipT7YhmpE010K7Rpzfdg9bo/exec",
 
   MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbyqugQrGMxgYX6f2yw_bYI80nXiqA0H4GQv8ZDDR0h8Q9yjaFGiUCEHy3_4TFyEWxklhQ/exec",
 
