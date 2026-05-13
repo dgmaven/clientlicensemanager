@@ -50,7 +50,7 @@ const app = createApp({
     });
 
     // Forms
-    const profileForm = ref({ id: '', name: '', email: '', password: '' });
+    const profileForm = ref({ id: '', name: '', email: '', password: '', currentEmail: '' });
     const addClientForm = ref({ name: '', phone: '', email: '', source: '' });
     const genLicenseForm = ref({ val: 1, unit: 'years', maxGen: 3 });
     const quickCreateForm = ref({ client: null, val: 1, unit: 'years', maxGen: 3 });
@@ -219,7 +219,14 @@ const app = createApp({
     // Profile Management
     const openProfileModal = () => { 
         const u = Auth.getUser();
-        profileForm.value = { id: u.id, name: u.name, email: u.email, password: '' };
+        if (!u.id) console.warn("User ID is missing from local storage. Fallback to Email lookup enabled.");
+        profileForm.value = { 
+            id: u.id || '', 
+            name: u.name || '', 
+            email: '', // Reset new email field
+            currentEmail: u.email || '', 
+            password: '' 
+        };
         modals.value.profile = true; 
     };
     const saveProfile = async () => {

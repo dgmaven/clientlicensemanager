@@ -42,6 +42,7 @@ function handleRequest(e) {
     }
 
     switch (action) {
+      case "version": response = { status: "success", version: "1.1.0-profile-fix" }; break;
       case "ping": response = { status: "success", type: "satellite" }; break;
       case "login": response = login(payload); break;
       case "getSettings": response = getSettings(); break;
@@ -59,7 +60,7 @@ function handleRequest(e) {
       case "updateClient": response = updateClient(payload); break;
       case "updateProfile": response = updateProfile(payload); break;
       case "resetSystem": response = resetSystem(payload); break;
-      default: response = { status: "error", message: "Invalid Action" };
+      default: response = { status: "error", message: "Invalid Action: " + action };
     }
   } catch (err) { response = { status: "error", message: err.toString() }; }
 
@@ -491,14 +492,16 @@ function updateProfile(p) {
   const sheet = SPREADSHEET.getSheetByName(SHEETS.MEMBERS);
   const data = sheet.getDataRange().getValues();
   const id = p.id;
+  const lookupEmail = p.currentEmail; // Pass the current email as fallback
   
-  if (!id) return { status: "error", message: "Missing User ID" };
+  if (!id && !lookupEmail) return { status: "error", message: "Missing User Identity (ID or Email)" };
 
   const newEmail = p.email || p.newEmail;
   const newPassword = p.password || p.newPassword;
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === id) {
+    // Match by ID OR by Current Email
+    if ((id && data[i][0] === id) || (lookupEmail && data[i][2] === lookupEmail)) {
       if (p.name) sheet.getRange(i + 1, 2).setValue(p.name);
       if (newEmail) sheet.getRange(i + 1, 3).setValue(newEmail);
       if (newPassword) sheet.getRange(i + 1, 4).setValue(hashPassword(newPassword));
