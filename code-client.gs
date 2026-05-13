@@ -31,7 +31,7 @@ function handleRequest(e) {
     const domain = payload.domain || "global";
  
     // 1. GLOBAL KILL-SWITCH (Ping Master)
-    const bypassActions = ["activateLicense", "ping", "validateLicense", "updateProfile", "version", "getBranding"];
+    const bypassActions = ["activateLicense", "ping", "validateLicense", "updateProfile", "version", "getBranding", "login", "forgotPassword"];
     if (!bypassActions.includes(action)) {
       // Force domain verification. 
       const currentDomain = (payload.domain || "global").toLowerCase().trim();
@@ -46,6 +46,7 @@ function handleRequest(e) {
       case "getBranding": response = getBranding(); break;
       case "ping": response = { status: "success", type: "satellite" }; break;
       case "login": response = login(payload); break;
+      case "forgotPassword": response = forgotPassword(payload); break;
       case "getSettings": response = getSettings(); break;
       case "updateSettings": response = updateSettings(payload); break;
       case "listLicenses": response = listLicenses(); break;
@@ -515,6 +516,31 @@ function updateProfile(p) {
     }
   }
   return { status: "error", message: "Member not found" };
+}
+
+function forgotPassword(p) {
+  const email = p.email;
+  if (!email) return { status: "error", message: "Email is required." };
+  
+  const sheet = SPREADSHEET.getSheetByName(SHEETS.MEMBERS);
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] === email) {
+      const newPassword = Math.random().toString(36).slice(-8);
+      sheet.getRange(i + 1, 4).setValue(hashPassword(newPassword));
+      
+      try {
+        const subject = "Password Reset - License System";
+        const body = "Hello " + data[i][1] + ",\n\nYour new temporary password is: " + newPassword + "\n\nPlease login and change it immediately.";
+        MailApp.sendEmail(email, subject, body);
+        return { status: "success" };
+      } catch (err) {
+        return { status: "error", message: "Failed to send email. Ensure you have granted email permissions." };
+      }
+    }
+  }
+  return { status: "error", message: "Email not found." };
 }
 
 function login(p) {
