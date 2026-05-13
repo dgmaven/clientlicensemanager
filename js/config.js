@@ -17,9 +17,9 @@ const CONFIG = {
   set WEB_URL(v) { localStorage.setItem('SYSTEM_WEB_URL', v); },
 
   // Pre-configured URL to bypass activation on fresh browsers
-  DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbwkaOl2ctkcRfTvNdsvYpNFVTah9PBjQx0QULPCGOLnfipT7YhmpE010K7Rpzfdg9bo/exec",
+  DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbz1yFknxhHVf1mgRsKaA67pk1dAaVFZ9u6WTjp0vpvdykTkoYoFt3ITVle5hm2DQXRM/exec",
 
-  MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbyp_U96hI95PQTmj6696rS-zPULBFPWJEh7e6B1knuOyJtepule22XXQFLQTKMCiwNA/exec",
+  MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbxU-N3gHHQumjKwnZDua26aHp-U_gvmyBs5HEoQ_v-XUlFwLG7urWgFpHq-tX-6gVWZ/exec",
 
   SYSTEM_NAME: "License Generator",
   ENV: "DEBUG", // "DEBUG" or "PRODUCTION"

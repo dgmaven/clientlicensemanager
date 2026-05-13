@@ -13,7 +13,7 @@ const SHEETS = {
 };
 
 // --- LINK TO MASTER HUB ---
-const MASTER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbIQ-TclQ0Wo_WL5HyKi1W9nkfcKpPyR90wgZKj2NgJx7Be9_wZ5UGpVnYtIPLwsUlP/exec";
+const MASTER_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyp_U96hI95PQTmj6696rS-zPULBFPWJEh7e6B1knuOyJtepule22XXQFLQTKMCiwNA/exec";
 
 function doGet(e) { return handleRequest(e); }
 function doPost(e) { return handleRequest(e); }
@@ -589,6 +589,45 @@ function validateLicense(p) {
     }
   }
   return { status: "error", message: "License not found" };
+}
+
+function activateLicense(p) {
+  // 1. Delegate to Master Hub
+  const res = callMasterHub("activateLicense", {
+    licenseKey: p.licenseKey,
+    email: p.email,
+    webUrl: p.webUrl,
+    domain: p.domain || "global"
+  });
+
+  if (res.status === "success") {
+    // 2. Initialize Satellite Database (Members & Settings)
+    const membersSheet = SPREADSHEET.getSheetByName(SHEETS.MEMBERS);
+    if (membersSheet) {
+      const data = membersSheet.getDataRange().getValues();
+      let found = false;
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][2] === p.email) {
+          membersSheet.getRange(i + 1, 4).setValue(hashPassword(p.password));
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        membersSheet.appendRow(["M-" + Date.now(), "Admin", p.email, hashPassword(p.password), "admin", "active", false, new Date()]);
+      }
+    }
+    
+    // 3. Set basic settings if missing
+    const settingsSheet = SPREADSHEET.getSheetByName(SHEETS.SETTINGS);
+    if (settingsSheet) {
+      const sData = getSettings().data;
+      if (!sData.SystemName) settingsSheet.appendRow(["SystemName", "License Generator"]);
+      if (!sData.PrimaryColor) settingsSheet.appendRow(["PrimaryColor", "#2563eb"]);
+    }
+  }
+
+  return res;
 }
 
 function hashPassword(p) { return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, p).map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0')).join(''); }
