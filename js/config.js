@@ -19,7 +19,7 @@ const CONFIG = {
   // Pre-configured URL to bypass activation on fresh browsers
   DEFAULT_WEB_URL: "https://script.google.com/macros/s/AKfycbwkaOl2ctkcRfTvNdsvYpNFVTah9PBjQx0QULPCGOLnfipT7YhmpE010K7Rpzfdg9bo/exec",
 
-  MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbyqugQrGMxgYX6f2yw_bYI80nXiqA0H4GQv8ZDDR0h8Q9yjaFGiUCEHy3_4TFyEWxklhQ/exec",
+  MASTER_HUB_URL: "https://script.google.com/macros/s/AKfycbyp_U96hI95PQTmj6696rS-zPULBFPWJEh7e6B1knuOyJtepule22XXQFLQTKMCiwNA/exec",
 
   SYSTEM_NAME: "License Generator",
   ENV: "DEBUG", // "DEBUG" or "PRODUCTION"
